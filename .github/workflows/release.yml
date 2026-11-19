@@ -1,0 +1,25 @@
+# Not yet executed: provided as a starting point (docs/pending/release-and-installers.md).
+# Builds the Windows installers when a tag like v0.1.0 is pushed.
+name: Release
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - working-directory: app
+        run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: app
+          tagName: ${{ github.ref_name }}
+          releaseName: ThrustBench ${{ github.ref_name }}
+          releaseDraft: true

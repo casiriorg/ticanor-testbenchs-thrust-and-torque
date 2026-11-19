@@ -1,0 +1,22 @@
+# Not yet executed: provided as a starting point (docs/pending/release-and-installers.md).
+name: CI
+on: [push, pull_request]
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build the firmware for the PC
+        run: firmware/host_sim/build.sh "$RUNNER_TEMP/tb_host_sim"
+      - name: Core tests, including against the real firmware
+        working-directory: app
+        run: TB_HOST_SIM="$RUNNER_TEMP/tb_host_sim" cargo test -p tb-core
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - working-directory: app
+        run: npm ci && npm run build

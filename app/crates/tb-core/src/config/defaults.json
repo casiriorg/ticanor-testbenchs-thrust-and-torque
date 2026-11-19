@@ -1,0 +1,81 @@
+{
+  "_comment": "Application defaults. User settings (settings.json in the app config folder) are merged over the 'settings' object, so only changed values are stored. The firmware's matching defaults are in firmware/ThrustBench/src/config/Defaults.h.",
+
+  "usb_ids": {
+    "acquisition_board": [
+      { "vid": 6790, "pid": 29987, "label": "CH340 (Arduino Nano clone)" },
+      { "vid": 6790, "pid": 21795, "label": "CH341" },
+      { "vid": 1027, "pid": 24577, "label": "FTDI FT232R (Arduino Nano)" },
+      { "vid": 9025, "pid": null, "label": "Arduino" },
+      { "vid": 4292, "pid": 60000, "label": "CP210x" }
+    ],
+    "flight_controller": [
+      { "vid": 12642, "pid": null, "label": "Holybro (Pixhawk 6X/6C)" },
+      { "vid": 9900, "pid": null, "label": "PX4 / 3D Robotics" },
+      { "vid": 11694, "pid": null, "label": "CubePilot" },
+      { "vid": 4617, "pid": 22336, "label": "ArduPilot" },
+      { "vid": 4617, "pid": 22337, "label": "ArduPilot" },
+      { "vid": 1155, "pid": 22336, "label": "STM32 virtual COM port" }
+    ]
+  },
+
+  "sensor_catalog": [
+    { "code": 1, "key": "thrust", "label": "Thrust", "unit": "N" },
+    { "code": 2, "key": "torque", "label": "Torque", "unit": "N·m" },
+    { "code": 3, "key": "force", "label": "Force", "unit": "N" },
+    { "code": 16, "key": "accel_x", "label": "Acceleration X", "unit": "m/s²" },
+    { "code": 17, "key": "accel_y", "label": "Acceleration Y", "unit": "m/s²" },
+    { "code": 18, "key": "accel_z", "label": "Acceleration Z", "unit": "m/s²" },
+    { "code": 32, "key": "voltage", "label": "Voltage", "unit": "V" },
+    { "code": 33, "key": "current", "label": "Current", "unit": "A" },
+    { "code": 48, "key": "rpm", "label": "Speed", "unit": "rpm" },
+    { "code": 64, "key": "throttle", "label": "Throttle", "unit": "" }
+  ],
+
+  "load_cell_profiles": [
+    { "id": "bar_10kg", "label": "Bar cell 10 kg", "capacity_kg": 10.0, "sensitivity_mv_v": 1.0, "safe_max_kgf": 10.5 },
+    { "id": "bar_5kg", "label": "Bar cell 5 kg", "capacity_kg": 5.0, "sensitivity_mv_v": 1.0, "safe_max_kgf": 5.25 },
+    { "id": "bar_3kg", "label": "Bar cell 3 kg", "capacity_kg": 3.0, "sensitivity_mv_v": 1.0, "safe_max_kgf": 3.15 },
+    { "id": "bar_20kg", "label": "Bar cell 20 kg", "capacity_kg": 20.0, "sensitivity_mv_v": 1.0, "safe_max_kgf": 21.0 },
+    { "id": "s_type_50kg", "label": "S-type cell 50 kg", "capacity_kg": 50.0, "sensitivity_mv_v": 2.0, "safe_max_kgf": 52.5 }
+  ],
+  "default_load_cell_profile": "bar_10kg",
+
+  "setup_options": {
+    "motor_type": ["outrunner", "inrunner"],
+    "propeller_material": ["carbon fibre", "plastic", "wood", "carbon-nylon"],
+    "propeller_direction": ["CW", "CCW"],
+    "propeller_blades": [2, 3, 4],
+    "esc_protocol": ["PWM", "OneShot125", "DShot150", "DShot300", "DShot600"],
+    "battery_chemistry": ["LiPo", "Li-ion", "LiHV", "bench supply"],
+    "battery_cells": [3, 4, 6, 8, 12, 14]
+  },
+
+  "settings": {
+    "language": "en",
+    "data_dir": null,
+    "auto_connect": true,
+    "preferred_driver": null,
+    "units": { "force": "gf", "torque": "nm" },
+    "gravity": 9.80665,
+    "csv": { "column_naming": "name", "include_raw": true },
+    "safety": {
+      "max_throttle": 0.6,
+      "max_rise_per_s": 0.5,
+      "max_thrust_n": null,
+      "max_torque_nm": null,
+      "ui_timeout_ms": 1500
+    },
+    "display": { "window_s": 20.0, "smoothing_samples": 1, "mains_filter": "off" },
+    "calibration": {
+      "torque_arm_mm": 100.0,
+      "force_ratio": 1.0,
+      "capture_seconds": 3.0,
+      "thrust_points_g": [0, 500, 1000, 2000, 3000],
+      "torque_points_g": [0, 100, 200, 500]
+    },
+    "tare_max_age_min": 10,
+    "channel_names": {},
+    "channel_load_cell": {}
+  }
+}
