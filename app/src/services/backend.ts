@@ -60,6 +60,16 @@ export interface Backend {
   getSettings(): Promise<AppSettings>;
   updateSettings(settings: AppSettings): Promise<void>;
   getReference(): Promise<Reference>;
+
+  /**
+   * Saves bytes to a path the operator chooses: a native "save as" dialog on
+   * desktop, a browser download in the mock. Returns false if cancelled.
+   */
+  saveBytes(bytes: Uint8Array, suggestedName: string, mime: string, filters: { name: string; extensions: string[] }[]): Promise<boolean>;
+  /** Copies a recording's CSV to a path the operator chooses. Returns false if cancelled. */
+  exportRecordingCsv(id: string, suggestedName: string): Promise<boolean>;
+  /** Copies several recordings' CSVs into one folder the operator chooses. Returns false if cancelled. */
+  exportRecordingsCsv(ids: string[]): Promise<boolean>;
 }
 
 export const isDesktop = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;

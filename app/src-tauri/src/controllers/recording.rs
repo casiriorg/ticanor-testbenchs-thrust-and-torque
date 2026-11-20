@@ -27,3 +27,12 @@ pub fn load_recording(state: State<'_, AppState>, id: String) -> CommandResult<R
     let dir = recording::recording_dir(&state.bench.data_dir(), &id)?;
     recording::load_recording(&dir)
 }
+
+/// Copies a recording's CSV to a path the operator chose (the window's "save as").
+#[tauri::command(async)]
+pub fn export_recording_csv(state: State<'_, AppState>, id: String, dest: String) -> CommandResult<()> {
+    let dir = recording::recording_dir(&state.bench.data_dir(), &id)?;
+    let src = recording::data_file_path(&dir);
+    std::fs::copy(&src, &dest)?;
+    Ok(())
+}

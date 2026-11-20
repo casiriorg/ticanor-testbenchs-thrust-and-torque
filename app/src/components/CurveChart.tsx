@@ -1,6 +1,10 @@
 // Small SVG chart for curves with few points and independent x values
 // (one polyline per recording), which uPlot's shared-x model does not fit.
 
+import { useRef } from "react";
+
+import { ChartExportBar } from "./ChartExport";
+
 export interface Curve {
   label: string;
   color: string;
@@ -12,6 +16,8 @@ interface CurveChartProps {
   xLabel: string;
   yLabel: string;
   height?: number;
+  /** Shows "save as PNG/JPG" buttons with this as the suggested file name. */
+  exportName?: string;
 }
 
 const W = 520;
@@ -27,7 +33,8 @@ function niceTicks(max: number, count = 5): number[] {
   return ticks;
 }
 
-export function CurveChart({ curves, xLabel, yLabel, height = 240 }: CurveChartProps) {
+export function CurveChart({ curves, xLabel, yLabel, height = 240, exportName }: CurveChartProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
   const all = curves.flatMap((c) => c.points).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
   const xTicks = niceTicks(Math.max(...all.map((p) => p.x), 0));
   const yTicks = niceTicks(Math.max(...all.map((p) => p.y), 0));
@@ -38,7 +45,8 @@ export function CurveChart({ curves, xLabel, yLabel, height = 240 }: CurveChartP
 
   return (
     <div className="curve-chart">
-      <svg viewBox={`0 0 ${W} ${height}`} role="img" aria-label={`${yLabel} / ${xLabel}`}>
+      <ChartExportBar exportName={exportName} getElement={() => svgRef.current} />
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${height}`} role="img" aria-label={`${yLabel} / ${xLabel}`}>
         {yTicks.map((t) => (
           <g key={`y${t}`}>
             <line x1={PAD.left} x2={W - PAD.right} y1={sy(t)} y2={sy(t)} className="grid-line" />

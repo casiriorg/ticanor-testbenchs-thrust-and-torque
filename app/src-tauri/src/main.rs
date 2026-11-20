@@ -19,6 +19,7 @@ use state::{AppState, WindowSink};
 fn main() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             let paths = app.path();
             let config_dir = paths.app_config_dir()?;
@@ -65,6 +66,7 @@ fn main() {
             controllers::recording::stop_recording,
             controllers::recording::list_recordings,
             controllers::recording::load_recording,
+            controllers::recording::export_recording_csv,
             controllers::analysis::compute_stats,
             controllers::analysis::compute_spectrum,
             controllers::analysis::compute_curve,

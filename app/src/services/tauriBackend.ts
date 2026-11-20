@@ -3,11 +3,22 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { downloadDir, join } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ask, open } from "@tauri-apps/plugin-dialog";
+import { ask, open, save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
 
 import type { Backend } from "./backend";
 import type { BenchEvent } from "./types";
+
+/** `<Downloads>/name`, or just `name` if the Downloads folder can't be resolved. */
+async function defaultSavePath(name: string): Promise<string> {
+  try {
+    return await join(await downloadDir(), name);
+  } catch {
+    return name;
+  }
+}
 
 export const tauriBackend: Backend = {
   async onEvent(handler) {
@@ -15,7 +26,14 @@ export const tauriBackend: Backend = {
   },
   async onCloseRequested(guard) {
     await getCurrentWindow().onCloseRequested(async (event) => {
-      if (!(await guard())) event.preventDefault();
+      // Fail open: a bug here must never leave the window stuck with no way to close it.
+      let allow = true;
+      try {
+        allow = await guard();
+      } catch (e) {
+        console.error("onCloseRequested guard threw, closing anyway:", e);
+      }
+      if (!allow) event.preventDefault();
     });
   },
   async pickFolder() {
@@ -67,4 +85,25 @@ export const tauriBackend: Backend = {
   getSettings: () => invoke("get_settings"),
   updateSettings: (settings) => invoke("update_settings", { settings }),
   getReference: () => invoke("get_reference"),
+
+  async saveBytes(bytes, suggestedName, _mime, filters) {
+    const path = await save({ defaultPath: await defaultSavePath(suggestedName), filters });
+    if (!path) return false;
+    await writeFile(path, bytes);
+    return true;
+  },
+  async exportRecordingCsv(id, suggestedName) {
+    const path = await save({ defaultPath: await defaultSavePath(suggestedName), filters: [{ name: "CSV", extensions: ["csv"] }] });
+    if (!path) return false;
+    await invoke("export_recording_csv", { id, dest: path });
+    return true;
+  },
+  async exportRecordingsCsv(ids) {
+    const folder = await open({ directory: true, multiple: false, defaultPath: await downloadDir() });
+    if (typeof folder !== "string") return false;
+    for (const id of ids) {
+      await invoke("export_recording_csv", { id, dest: await join(folder, `${id}.csv`) });
+    }
+    return true;
+  },
 };

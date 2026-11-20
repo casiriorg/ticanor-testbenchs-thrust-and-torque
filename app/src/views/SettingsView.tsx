@@ -6,12 +6,14 @@ import { languages } from "../i18n";
 import { api, isDesktop } from "../services/backend";
 import type { AppSettings } from "../services/types";
 import { useBench } from "../stores/benchStore";
+import { applyTheme, useTheme } from "../utils/theme";
 
 export function SettingsView() {
   const { t } = useTranslation();
   const stored = useBench((s) => s.settings)!;
   const reference = useBench((s) => s.reference)!;
   const save = useBench((s) => s.saveSettings);
+  const theme = useTheme();
   const [draft, setDraft] = useState<AppSettings>(stored);
   const [saved, setSaved] = useState(false);
 
@@ -34,6 +36,13 @@ export function SettingsView() {
       <Section title={t("settings.general")}>
         <div className="form-grid">
           <SelectField id="s-language" label={t("settings.language")} value={draft.language} options={languages.map((l) => ({ value: l.code as string, label: l.label }))} onChange={(v) => v && void changeLanguage(v)} />
+          <SelectField
+            id="s-theme"
+            label={t("settings.theme")}
+            value={theme}
+            options={[{ value: "dark" as const, label: t("settings.themeDark") }, { value: "light" as const, label: t("settings.themeLight") }]}
+            onChange={(v) => v && applyTheme(v)}
+          />
           <label className="check"><input id="s-auto" type="checkbox" checked={draft.auto_connect} onChange={(e) => edit({ auto_connect: e.target.checked })} />{t("settings.autoConnect")}</label>
         </div>
         <label className="field wide" htmlFor="s-dir">

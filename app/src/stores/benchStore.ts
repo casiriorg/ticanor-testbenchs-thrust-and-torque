@@ -11,6 +11,17 @@ import { liveBuffer } from "./liveBuffer";
 /** How often the window tells the core it is alive (dead-man check). */
 const UI_HEARTBEAT_MS = 300;
 
+/**
+ * Guards `init()` against React StrictMode's deliberate double-invoke of
+ * effects in development: the `ready` flag in the store is only set once
+ * `init()`'s first `await` resolves, so a second call arriving before then
+ * would see `ready` still false and run the whole body again, registering a
+ * second `onCloseRequested` listener, a second heartbeat interval and a
+ * second event subscription. This flag is set synchronously, before any
+ * `await`, so the second call bails out immediately instead.
+ */
+let initStarted = false;
+
 interface BenchStore {
   ready: boolean;
   snapshot: BenchSnapshot | null;
@@ -38,7 +49,8 @@ export const useBench = create<BenchStore>((set, get) => ({
   error: null,
 
   async init() {
-    if (get().ready) return;
+    if (initStarted) return;
+    initStarted = true;
     const [settings, reference, snapshot] = await Promise.all([api.getSettings(), api.getReference(), api.getSnapshot()]);
     await i18n.changeLanguage(settings.language);
     set({ settings, reference, snapshot, ready: true });
@@ -59,11 +71,18 @@ export const useBench = create<BenchStore>((set, get) => ({
     window.setInterval(() => void api.uiAlive().catch(() => undefined), UI_HEARTBEAT_MS);
 
     await api.onCloseRequested(async () => {
-      const s = get().snapshot;
-      if (s?.actuator !== "armed" && !s?.recording) return true;
-      // Closing is still safe (the core stops the motor and finishes the
-      // file), but an accidental close should not end a test.
-      return api.confirm(i18n.t("confirm.closeWhileActive"));
+      try {
+        const s = get().snapshot;
+        if (s?.actuator !== "armed" && !s?.recording) return true;
+        // Closing is still safe (the core stops the motor and finishes the
+        // file), but an accidental close should not end a test.
+        return await api.confirm(i18n.t("confirm.closeWhileActive"));
+      } catch (e) {
+        // An unexpected error here must never leave the window stuck open
+        // with no way to close it.
+        console.error("close guard failed, closing anyway:", e);
+        return true;
+      }
     });
   },
 

@@ -4,9 +4,11 @@ import { useTranslation } from "react-i18next";
 import { CurveChart, SERIES_COLORS, type Curve } from "../components/CurveChart";
 import { Section, SelectField } from "../components/Fields";
 import { LineChart } from "../components/LineChart";
-import { api } from "../services/backend";
-import type { ChannelSeries, CurvePoint, RecordingData, RecordingSummary, Spectrum, Stats } from "../services/types";
+import { SpectrumPanel } from "../components/SpectrumPanel";
+import { api, errorMessage } from "../services/backend";
+import type { ChannelSeries, CurvePoint, RecordingData, RecordingSummary, Stats } from "../services/types";
 import { useBench } from "../stores/benchStore";
+import { buildRecordingPdf } from "../utils/pdf";
 import { channelDisplay, formatDuration } from "../utils/units";
 
 const CHANNEL_COLORS: Record<string, string> = { thrust: "#3cb8c6", torque: "#f58518", throttle: "#b279a2" };
@@ -30,7 +32,7 @@ function label(summary: { motor: string; propeller: string; id: string }): strin
 }
 
 /** One channel of a recording, drawn up to the replay cursor. */
-function ReplayChart({ channel, cursor }: { channel: ChannelSeries; cursor: number }) {
+function ReplayChart({ channel, cursor, recordingId }: { channel: ChannelSeries; cursor: number; recordingId: string }) {
   const units = useBench((s) => s.settings)!.units;
   const display = channelDisplay(channel.sensor_type, units);
   const data = useMemo(() => {
@@ -40,7 +42,15 @@ function ReplayChart({ channel, cursor }: { channel: ChannelSeries; cursor: numb
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel, cursor, units]);
   const lines = useMemo(() => [{ label: channel.name, color: CHANNEL_COLORS[channel.key] ?? "#9aa", y: data.y }], [data, channel]);
-  return <LineChart x={data.x} lines={lines} height={channel.key === "throttle" ? 100 : 150} yLabel={`${channel.name} (${display.unit})`} />;
+  return (
+    <LineChart
+      x={data.x}
+      lines={lines}
+      height={channel.key === "throttle" ? 100 : 150}
+      yLabel={`${channel.name} (${display.unit})`}
+      exportName={`${recordingId}_${channel.key}`}
+    />
+  );
 }
 
 function Detail({ loaded }: { loaded: Loaded }) {
@@ -53,7 +63,9 @@ function Detail({ loaded }: { loaded: Loaded }) {
   const [speed, setSpeed] = useState(1);
   const [stats, setStats] = useState<Record<string, Stats | null>>({});
   const [spectrumKey, setSpectrumKey] = useState("thrust");
-  const [spectrum, setSpectrum] = useState<Spectrum | null>(null);
+  const [exporting, setExporting] = useState<"pdf" | "csv" | null>(null);
+  const run = useBench((s) => s.run);
+  const setError = useBench((s) => s.setError);
 
   useEffect(() => {
     setCursor(duration);
@@ -77,22 +89,27 @@ function Detail({ loaded }: { loaded: Loaded }) {
     return () => window.clearInterval(id);
   }, [playing, speed, duration]);
 
-  useEffect(() => {
-    const channel = data.channels.find((c) => c.key === spectrumKey);
-    setSpectrum(null);
-    if (!channel || channel.series.v.length < 64) return;
-    api.computeSpectrum(channel.series).then(setSpectrum).catch(() => setSpectrum(null));
-  }, [data, spectrumKey]);
-
   const spectrumChannel = data.channels.find((c) => c.key === spectrumKey);
   const spectrumDisplay = channelDisplay(spectrumChannel?.sensor_type ?? 0, units);
-  const spectrumLines = useMemo(
-    () => [{ label: spectrumKey, color: CHANNEL_COLORS[spectrumKey] ?? "#9aa", y: (spectrum?.amplitude ?? []).map(spectrumDisplay.convert) }],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [spectrum, spectrumKey, units],
-  );
   const force = channelDisplay(1, units);
   const torque = channelDisplay(2, units);
+
+  const exportPdf = async () => {
+    setExporting("pdf");
+    try {
+      const bytes = buildRecordingPdf(data, curve, stats, units);
+      await api.saveBytes(bytes, `${data.meta.id}.pdf`, "application/pdf", [{ name: "PDF", extensions: ["pdf"] }]);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setExporting(null);
+    }
+  };
+  const exportCsv = async () => {
+    setExporting("csv");
+    await run(() => api.exportRecordingCsv(data.meta.id, `${data.meta.id}.csv`));
+    setExporting(null);
+  };
 
   return (
     <>
@@ -107,7 +124,12 @@ function Detail({ loaded }: { loaded: Loaded }) {
           <input className="grow" type="range" min={0} max={duration} step={0.05} value={cursor} onChange={(e) => { setPlaying(false); setCursor(e.target.valueAsNumber); }} aria-label={t("lib.play")} />
           <span className="mono">{formatDuration(cursor)} / {formatDuration(duration)}</span>
         </div>
-        {data.channels.filter((c) => c.series.t.length > 0).map((c) => <ReplayChart key={c.key} channel={c} cursor={cursor} />)}
+        <div className="row tight">
+          <span className="grow" />
+          <button id="export-pdf" disabled={exporting !== null} onClick={() => void exportPdf()}>{exporting === "pdf" ? t("lib.exporting") : t("lib.exportPdf")}</button>
+          <button id="export-csv" disabled={exporting !== null} onClick={() => void exportCsv()}>{exporting === "csv" ? t("lib.exporting") : t("lib.exportCsv")}</button>
+        </div>
+        {data.channels.filter((c) => c.series.t.length > 0).map((c) => <ReplayChart key={c.key} channel={c} cursor={cursor} recordingId={data.meta.id} />)}
       </Section>
 
       <div className="columns">
@@ -158,7 +180,13 @@ function Detail({ loaded }: { loaded: Loaded }) {
           )}
         </Section>
         <Section title={t("live.spectrum")} aside={<SelectField id="spectrum-channel" label={t("lib.spectrumChannel")} value={spectrumKey} options={data.channels.filter((c) => c.key !== "throttle").map((c) => ({ value: c.key, label: c.name }))} onChange={(v) => v && setSpectrumKey(v)} />}>
-          {spectrum ? <LineChart x={spectrum.freq_hz} lines={spectrumLines} height={190} xLabel="Hz" yLabel={spectrumDisplay.unit} /> : <p className="muted">{t("live.noData")}</p>}
+          <SpectrumPanel
+            series={spectrumChannel?.series ?? null}
+            color={CHANNEL_COLORS[spectrumKey] ?? "#9aa"}
+            unit={spectrumDisplay.unit}
+            convert={spectrumDisplay.convert}
+            exportName={`${data.meta.id}_${spectrumKey}`}
+          />
         </Section>
       </div>
     </>
@@ -182,9 +210,9 @@ function Comparison({ items }: { items: { summary: RecordingSummary; loaded: Loa
     <Section title={t("lib.compareTitle")}>
       {items.every((i) => i.loaded.curve.length === 0) ? <p className="muted">{t("lib.noCurve")}</p> : (
         <div className="columns three">
-          <div><h4>{t("lib.thrustVsThrottle")}</h4><CurveChart curves={build((p) => force.convert(p.thrust_mean))} xLabel={`${t("lib.throttle")} (%)`} yLabel={force.unit} /></div>
-          <div><h4>{t("lib.torqueVsThrottle")}</h4><CurveChart curves={build((p) => (p.torque_mean === null ? null : torque.convert(p.torque_mean)))} xLabel={`${t("lib.throttle")} (%)`} yLabel={torque.unit} /></div>
-          <div><h4>{t("lib.thrustPerTorque")}</h4><CurveChart curves={build((p) => p.thrust_per_torque)} xLabel={`${t("lib.throttle")} (%)`} yLabel="1/m" /></div>
+          <div><h4>{t("lib.thrustVsThrottle")}</h4><CurveChart curves={build((p) => force.convert(p.thrust_mean))} xLabel={`${t("lib.throttle")} (%)`} yLabel={force.unit} exportName="thrust_vs_throttle" /></div>
+          <div><h4>{t("lib.torqueVsThrottle")}</h4><CurveChart curves={build((p) => (p.torque_mean === null ? null : torque.convert(p.torque_mean)))} xLabel={`${t("lib.throttle")} (%)`} yLabel={torque.unit} exportName="torque_vs_throttle" /></div>
+          <div><h4>{t("lib.thrustPerTorque")}</h4><CurveChart curves={build((p) => p.thrust_per_torque)} xLabel={`${t("lib.throttle")} (%)`} yLabel="1/m" exportName="thrust_per_torque" /></div>
         </div>
       )}
     </Section>
@@ -200,9 +228,16 @@ export function RecordingsView() {
   const [selected, setSelected] = useState<string | null>(null);
   const [checked, setChecked] = useState<string[]>([]);
   const [cache, setCache] = useState<Record<string, Loaded>>({});
+  const [savingCsv, setSavingCsv] = useState(false);
 
   const refresh = useCallback(async () => setList(await api.listRecordings()), []);
   useEffect(() => void refresh(), [refresh]);
+
+  const saveCheckedCsv = async () => {
+    setSavingCsv(true);
+    await run(() => api.exportRecordingsCsv(checked));
+    setSavingCsv(false);
+  };
 
   // Load on demand whatever is selected or ticked, once.
   useEffect(() => {
@@ -219,6 +254,9 @@ export function RecordingsView() {
         <div className="row tight">
           <input id="lib-filter" type="search" className="grow" placeholder={t("lib.filter")} value={filter} onChange={(e) => setFilter(e.target.value)} />
           <button onClick={() => void refresh()}>{t("lib.refresh")}</button>
+          <button id="lib-save-csv" disabled={checked.length === 0 || savingCsv} onClick={() => void saveCheckedCsv()}>
+            {savingCsv ? t("lib.exporting") : t("lib.saveCsv")}
+          </button>
         </div>
         <p className="muted small path" title={dataDir}>{dataDir}</p>
         {visible.length === 0 && <p className="muted">{t("lib.empty")}</p>}

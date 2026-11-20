@@ -186,6 +186,27 @@ function seedLibrary() {
 const need = (ok: boolean, message: string, code = "safety") => { if (!ok) throw { code, message }; };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Browser stand-in for a native save dialog: triggers a normal download. */
+function downloadBytes(bytes: Uint8Array, name: string, mime: string) {
+  // Uint8Array is a valid BlobPart at runtime; TS's DOM lib is overly strict about its buffer type.
+  const blob = new Blob([bytes as unknown as BlobPart], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** Simplified stand-in for the real per-channel CSV the Rust core writes. */
+function buildCsv(data: RecordingData): string {
+  const rows = ["channel,t_s,value"];
+  for (const c of data.channels) {
+    for (let i = 0; i < c.series.t.length; i++) rows.push(`${c.key},${c.series.t[i]},${c.series.v[i]}`);
+  }
+  return rows.join("\n");
+}
+
 export const mockBackend: Backend = {
   async onEvent(handler) {
     if (handlers.length === 0) { seedLibrary(); setInterval(tick, 50); setTimeout(() => { connected = true; emit({ type: "snapshot", payload: snapshot() }); }, 600); }
@@ -320,4 +341,23 @@ export const mockBackend: Backend = {
   async getSettings() { return structuredClone(settings); },
   async updateSettings(next) { Object.assign(settings, structuredClone(next)); },
   async getReference() { return reference; },
+
+  async saveBytes(bytes, suggestedName, mime) {
+    downloadBytes(bytes, suggestedName, mime);
+    return true;
+  },
+  async exportRecordingCsv(id, suggestedName) {
+    const data = library.get(id);
+    need(!!data, `recording ${id} was not found`, "recording");
+    downloadBytes(new TextEncoder().encode(buildCsv(data!)), suggestedName, "text/csv");
+    return true;
+  },
+  async exportRecordingsCsv(ids) {
+    // No real folder picker in the browser mock: download each CSV separately.
+    for (const id of ids) {
+      const data = library.get(id);
+      if (data) downloadBytes(new TextEncoder().encode(buildCsv(data)), `${id}.csv`, "text/csv");
+    }
+    return true;
+  },
 };

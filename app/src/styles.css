@@ -1,11 +1,24 @@
-/* Layout: fixed safety bar on top, tabs, then the active view. The palette is
-   a dark instrument panel; red is reserved for the emergency stop and the
-   armed state so it always means "the motor can turn". */
+/* Layout: fixed safety bar on top, tabs, then the active view. The default palette is
+   a dark instrument panel; red is reserved for the emergency stop and the armed state
+   so it always means "the motor can turn". A light theme is available (Settings ->
+   General -> Theme), composed below from the same tokens so every component that reads
+   a `--var` rather than a literal hex repaints correctly in either theme. */
 :root {
   --bg: #0e171c; --panel: #15212a; --panel-2: #1b2a34; --fg: #e5eef2; --muted: #92a4ae; --line: #2a3a44; --grid: #24333c;
   --accent: #3cb8c6; --on-accent: #06191c; --warn: #f0b429; --danger: #e5484d; --ok: #46a758;
+  --danger-bg: #3a1719; --danger-weak: #ff8f93;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
   color-scheme: dark;
+}
+/* Light instrument panel: same roles, re-tuned for contrast on a white/light surface
+   (status colors darkened a step so plain-text use, e.g. `.chip.conn-lost`, stays
+   readable; `--danger-bg` and `--danger-weak` swap from "dark tint for a dark panel" to
+   "light tint for a light panel" rather than reusing the dark literals as-is). */
+:root[data-theme="light"] {
+  --bg: #f3f6f8; --panel: #ffffff; --panel-2: #eef2f5; --fg: #16222a; --muted: #5c6b74; --line: #d7dee2; --grid: #e4e9ec;
+  --accent: #0f766e; --on-accent: #ffffff; --warn: #a16207; --danger: #b91c1c; --ok: #15803d;
+  --danger-bg: #fbe7e7; --danger-weak: #b91c1c;
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
@@ -48,7 +61,7 @@ main { flex: 1; overflow: auto; padding: 14px 16px 24px; }
 .chip.conn-lost { border-color: var(--danger); color: var(--danger); }
 .chip.conn-searching, .chip.conn-connecting { border-color: var(--warn); }
 .chip.sim { border-color: var(--accent); color: var(--accent); }
-.chip.rec { border-color: var(--danger); color: #ff8f93; font-variant-numeric: tabular-nums; }
+.chip.rec { border-color: var(--danger); color: var(--danger-weak); font-variant-numeric: tabular-nums; }
 .state { font-weight: 700; letter-spacing: .06em; padding: 5px 14px; border-radius: 6px; border: 2px solid var(--line); }
 .state-disarmed { border-color: var(--ok); color: var(--ok); }
 .state-armed { background: var(--danger); border-color: var(--danger); color: #fff; }
@@ -64,12 +77,12 @@ main { flex: 1; overflow: auto; padding: 14px 16px 24px; }
 .alarms:not(:empty) { padding-top: 10px; }
 .alarm { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 6px; border-left: 5px solid var(--accent); background: var(--panel-2); }
 .alarm.warning { border-left-color: var(--warn); }
-.alarm.critical { border-left-color: var(--danger); background: #3a1719; }
+.alarm.critical { border-left-color: var(--danger); background: var(--danger-bg); }
 .notice { border-left: 4px solid var(--warn); background: var(--panel-2); padding: 6px 10px; border-radius: 4px; }
 
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; display: grid; gap: 8px; align-content: start; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; }
 .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.stack { display: grid; gap: 14px; }
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .stack.narrow { max-width: 860px; }
 .columns { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); margin-top: 14px; }
 .columns.three { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-top: 0; }
@@ -79,7 +92,7 @@ main { flex: 1; overflow: auto; padding: 14px 16px 24px; }
 
 .live { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) 360px; align-items: start; }
 @media (max-width: 1050px) { .live { grid-template-columns: minmax(0, 1fr); } }
-.live-main { display: grid; gap: 10px; min-width: 0; }
+.live-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
 .live-side { display: grid; gap: 14px; }
 .readouts { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .readout { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; }
@@ -89,6 +102,22 @@ main { flex: 1; overflow: auto; padding: 14px 16px 24px; }
 .readout button { justify-self: start; padding: 3px 10px; font-size: 12.5px; }
 .readout .limits { display: flex; gap: 10px; margin: -2px 0 0; }
 .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px 0; min-width: 0; overflow: hidden; }
+.chart.heatmap { padding: 0; }
+.chart.heatmap canvas { display: block; }
+.chart-wrap { position: relative; min-width: 0; }
+.chart-export { position: absolute; top: 6px; right: 8px; z-index: 5; }
+.chart-export-trigger { padding: 2px 8px; font-size: 10.5px; line-height: 1.4; background: var(--panel-2); opacity: .75; }
+.chart-export-trigger:hover, .chart-export-trigger[aria-expanded="true"] { opacity: 1; border-color: var(--accent); }
+.chart-export-menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 10; display: grid; gap: 2px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .35); min-width: 64px;
+}
+.chart-export-menu button { padding: 3px 8px; font-size: 11px; text-align: left; background: none; border: 0; border-radius: 4px; }
+.chart-export-menu button:hover { background: var(--panel); color: var(--accent); }
+.spectrum-modes { margin-bottom: 6px; }
+.spectrum-modes button { display: inline-flex; padding: 4px 7px; color: var(--muted); }
+.spectrum-modes button.active { color: var(--accent); border-color: var(--accent); }
 .u-legend { font-size: 12px; color: var(--muted); }
 .slider { display: grid; gap: 4px; }
 .profile-row { align-items: end; }
@@ -138,8 +167,9 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
 .library-list li.selected { background: var(--panel-2); outline: 1px solid var(--accent); }
 .library-list .item { background: none; border: 0; text-align: left; display: grid; gap: 1px; padding: 5px 4px; flex: 1; min-width: 0; }
 .library-list .item span { font-size: 12px; color: var(--muted); }
-.library-detail { display: grid; gap: 14px; min-width: 0; }
+.library-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
 
+.curve-chart { position: relative; }
 .curve-chart svg { width: 100%; height: auto; display: block; }
 .curve-chart .grid-line { stroke: var(--grid); }
 .curve-chart .tick { fill: var(--muted); font-size: 11px; }

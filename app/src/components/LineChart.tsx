@@ -2,6 +2,9 @@ import { useEffect, useRef } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 
+import { useTheme } from "../utils/theme";
+import { ChartExportBar } from "./ChartExport";
+
 export interface Line {
   label: string;
   color: string;
@@ -17,6 +20,8 @@ interface LineChartProps {
   height?: number;
   xLabel?: string;
   yLabel?: string;
+  /** Shows "save as PNG/JPG" buttons with this as the suggested file name. */
+  exportName?: string;
 }
 
 function cssVar(name: string): string {
@@ -24,11 +29,13 @@ function cssVar(name: string): string {
 }
 
 /** Thin React wrapper around uPlot: one shared x axis, one or more lines. */
-export function LineChart({ x, lines, height = 180, xLabel, yLabel }: LineChartProps) {
+export function LineChart({ x, lines, height = 180, xLabel, yLabel, exportName }: LineChartProps) {
   const host = useRef<HTMLDivElement>(null);
   const plot = useRef<uPlot | null>(null);
-  // The plot is rebuilt only when the set of lines or the labels change.
-  const signature = lines.map((l) => `${l.label}|${l.color}|${l.dash}|${l.width}`).join(",") + `|${xLabel}|${yLabel}|${height}`;
+  const theme = useTheme();
+  // The plot is rebuilt only when the set of lines, the labels, or the theme's axis
+  // colors (read from CSS vars at creation time) change.
+  const signature = lines.map((l) => `${l.label}|${l.color}|${l.dash}|${l.width}`).join(",") + `|${xLabel}|${yLabel}|${height}|${theme}`;
 
   useEffect(() => {
     const element = host.current;
@@ -62,5 +69,10 @@ export function LineChart({ x, lines, height = 180, xLabel, yLabel }: LineChartP
     plot.current?.setData([x, ...lines.map((l) => l.y)]);
   }, [x, lines]);
 
-  return <div ref={host} className="chart" />;
+  return (
+    <div className="chart-wrap">
+      <div ref={host} className="chart" />
+      <ChartExportBar exportName={exportName} getElement={() => host.current?.querySelector("canvas") ?? null} />
+    </div>
+  );
 }

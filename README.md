@@ -1,4 +1,4 @@
-# ThrustBench
+# Ticanor Testbench
 
 Test bench software for drone motors and propellers: an Arduino Nano firmware that reads two load cells
 (thrust and torque) and drives an ESC, and a desktop application that shows, records, replays and compares the data.
@@ -18,7 +18,7 @@ Built and tested without the physical bench:
 - The core has 48 automated tests, including runs against the real firmware code.
 - The desktop shell builds on Linux; the UI was exercised in a browser against a mock backend.
 
-**Not yet done:** nothing has run on real hardware, and the Windows installer has not been built.
+**Not yet done:** nothing has run on real hardware. The Windows installer builds and launches (v0.1.0).
 Do the first hardware runs without a propeller. See `docs/safety.md`.
 
 ## Quick start
@@ -78,4 +78,8 @@ Analysis notebooks: see `analysis/README.md`.
 Recordings are saved to `Documents/ThrustBench/<date>_<time>_<motor>_<propeller>/` as `data.csv`,
 `session.json` and `setup.json`. The folder can be changed in Settings.
 
-No licence has been chosen yet; add one before publishing.
+## License
+
+MIT, see `LICENSE`. Dependencies are checked in `THIRD-PARTY-LICENSES.md`; the one case worth knowing
+about is that `serialport` and a few of Tauri's own dependencies are MPL-2.0 (file-level copyleft, fine
+to depend on as-is, see that file for what it would mean to modify one of them directly).

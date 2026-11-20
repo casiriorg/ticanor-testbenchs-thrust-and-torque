@@ -7,8 +7,9 @@ import { Section, SelectField } from "../components/Fields";
 import type { Line } from "../components/LineChart";
 import { LineChart } from "../components/LineChart";
 import { SetupForm } from "../components/SetupForm";
+import { SpectrumPanel } from "../components/SpectrumPanel";
 import { api } from "../services/backend";
-import type { AppSettings, ChannelDescriptor, Profile, Spectrum } from "../services/types";
+import type { AppSettings, ChannelDescriptor, Profile } from "../services/types";
 import { SENSOR } from "../services/types";
 import { useBench } from "../stores/benchStore";
 import { liveBuffer } from "../stores/liveBuffer";
@@ -97,7 +98,15 @@ function LiveChart({ channel }: { channel: ChannelDescriptor }) {
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, channel, limits.safety, limits.cellMax, t]);
-  return <LineChart x={data.x} lines={lines} height={channel.sensor_type === SENSOR.throttle ? 110 : 170} yLabel={`${channelLabel(channel, settings)} (${display.unit})`} />;
+  return (
+    <LineChart
+      x={data.x}
+      lines={lines}
+      height={channel.sensor_type === SENSOR.throttle ? 110 : 170}
+      yLabel={`${channelLabel(channel, settings)} (${display.unit})`}
+      exportName={`${channel.name}_monitor`}
+    />
+  );
 }
 
 function ThrottlePanel() {
@@ -272,25 +281,13 @@ function LiveSpectrum({ channel }: { channel: ChannelDescriptor }) {
   const { t } = useTranslation();
   const tick = useTick(1000);
   const settings = useBench((s) => s.settings)!;
-  const [spectrum, setSpectrum] = useState<Spectrum | null>(null);
   const display = channelDisplay(channel.sensor_type, settings.units);
+  const series = useMemo(() => liveBuffer.window(channel.id, settings.display.window_s), [tick, channel.id, settings.display.window_s]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    const series = liveBuffer.window(channel.id, settings.display.window_s);
-    if (series.v.length < 64) return;
-    let cancelled = false;
-    api.computeSpectrum(series, 256).then((s) => !cancelled && setSpectrum(s)).catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [tick, channel.id, settings.display.window_s]);
-
-  const lines = useMemo(() => [{ label: channel.name, color: COLORS[channel.sensor_type], y: (spectrum?.amplitude ?? []).map(display.convert) }], [spectrum, channel, display.convert]);
-  if (!spectrum) return <p className="muted">{t("live.noData")}</p>;
   return (
     <>
       <p className="muted small">{t("live.spectrumOf", { name: channel.name, seconds: settings.display.window_s })}</p>
-      <LineChart x={spectrum.freq_hz} lines={lines} height={170} xLabel="Hz" yLabel={display.unit} />
+      <SpectrumPanel series={series} color={COLORS[channel.sensor_type]} unit={display.unit} convert={display.convert} exportName={`${channel.name}_monitor`} />
     </>
   );
 }
@@ -300,7 +297,16 @@ export function LiveView() {
   const snapshot = useBench((s) => s.snapshot)!;
   const run = useBench((s) => s.run);
   const [showSpectrum, setShowSpectrum] = useState(false);
+  // `tick` drives the refresh so a channel's readout/chart appears as soon as it starts
+  // streaming (e.g. throttle feedback only flows once armed) and drops out again once it
+  // stops, instead of leaving an empty card and an empty chart in place.
+  const tick = useTick(250);
   const channels = snapshot.channels.filter((c) => c.enabled);
+  const liveChannels = useMemo(
+    () => channels.filter((c) => liveBuffer.recent(c.id) !== null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tick, snapshot.channels],
+  );
   const thrust = channels.find((c) => c.sensor_type === SENSOR.thrust);
 
   if (snapshot.connection.state !== "connected") {
@@ -315,8 +321,8 @@ export function LiveView() {
   return (
     <div className="live">
       <div className="live-main">
-        <div className="readouts">{channels.map((c) => <Readout key={c.id} channel={c} />)}</div>
-        {channels.map((c) => <LiveChart key={c.id} channel={c} />)}
+        <div className="readouts">{liveChannels.map((c) => <Readout key={c.id} channel={c} />)}</div>
+        {liveChannels.map((c) => <LiveChart key={c.id} channel={c} />)}
         {showSpectrum && thrust && <LiveSpectrum channel={thrust} />}
       </div>
       <aside className="live-side">

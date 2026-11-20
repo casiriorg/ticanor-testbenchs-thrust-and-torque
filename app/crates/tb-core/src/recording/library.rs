@@ -144,11 +144,16 @@ pub fn recording_dir(root: &Path, id: &str) -> Result<PathBuf> {
     Ok(dir)
 }
 
+/// Path to a recording's CSV, whichever of the final or partial name is present.
+pub fn data_file_path(dir: &Path) -> PathBuf {
+    if dir.join(DATA_FILE).exists() { dir.join(DATA_FILE) } else { dir.join(PARTIAL_FILE) }
+}
+
 /// Loads a whole recording into memory as one series per channel.
 pub fn load_recording(dir: &Path) -> Result<RecordingData> {
     let meta = read_meta(dir)?;
     let setup = read_setup(dir);
-    let data_path = if dir.join(DATA_FILE).exists() { dir.join(DATA_FILE) } else { dir.join(PARTIAL_FILE) };
+    let data_path = data_file_path(dir);
     let file = fs::File::open(&data_path)
         .map_err(|e| Error::Recording(format!("cannot open {}: {e}", data_path.display())))?;
     let mut lines = BufReader::new(file).lines();

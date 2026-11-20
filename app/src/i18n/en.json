@@ -98,7 +98,10 @@
     "seconds": "{{count}} s",
     "display": "Display",
     "safetyLimit": "Safety limit",
-    "cellMax": "Cell max"
+    "cellMax": "Cell max",
+    "spectrumView": "Spectrum view",
+    "spectrumLine": "Line (amplitude vs frequency)",
+    "spectrumHeatmap": "Heatmap (frequency over time)"
   },
   "rec": {
     "title": "Recording",
@@ -173,6 +176,10 @@
     "noCurve": "No throttle plateaus were found. Record with a staircase profile to get a curve.",
     "spectrumChannel": "Spectrum of",
     "refresh": "Refresh",
+    "exportPdf": "Export PDF…",
+    "exportCsv": "Save CSV as…",
+    "saveCsv": "Save CSV…",
+    "exporting": "Saving…",
     "throttle": "Throttle",
     "thrust": "Thrust",
     "torque": "Torque"
@@ -250,6 +257,9 @@
   "settings": {
     "general": "General",
     "language": "Language",
+    "theme": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
     "dataDir": "Recordings folder",
     "browse": "Browse…",
     "useDefault": "Use default",
@@ -297,5 +307,8 @@
   },
   "confirm": {
     "closeWhileActive": "The motor output is armed or a recording is running. Close anyway? The motor will be stopped and the recording saved."
+  },
+  "export": {
+    "button": "Export"
   }
 }

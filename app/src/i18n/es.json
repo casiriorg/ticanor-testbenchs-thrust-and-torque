@@ -98,7 +98,10 @@
     "seconds": "{{count}} s",
     "display": "Visualización",
     "safetyLimit": "Límite de seguridad",
-    "cellMax": "Máximo de la celda"
+    "cellMax": "Máximo de la celda",
+    "spectrumView": "Vista del espectro",
+    "spectrumLine": "Línea (amplitud vs frecuencia)",
+    "spectrumHeatmap": "Mapa de calor (frecuencia en el tiempo)"
   },
   "rec": {
     "title": "Grabación",
@@ -173,6 +176,10 @@
     "noCurve": "No se encontraron escalones de acelerador. Graba con un perfil en escalera para obtener la curva.",
     "spectrumChannel": "Espectro de",
     "refresh": "Actualizar",
+    "exportPdf": "Exportar PDF…",
+    "exportCsv": "Guardar CSV como…",
+    "saveCsv": "Guardar CSV…",
+    "exporting": "Guardando…",
     "throttle": "Acelerador",
     "thrust": "Empuje",
     "torque": "Torque"
@@ -250,6 +257,9 @@
   "settings": {
     "general": "General",
     "language": "Idioma",
+    "theme": "Tema",
+    "themeDark": "Oscuro",
+    "themeLight": "Claro",
     "dataDir": "Carpeta de grabaciones",
     "browse": "Examinar…",
     "useDefault": "Usar la predeterminada",
@@ -297,5 +307,8 @@
   },
   "confirm": {
     "closeWhileActive": "La salida del motor está armada o hay una grabación en curso. ¿Cerrar de todos modos? El motor se detendrá y la grabación se guardará."
+  },
+  "export": {
+    "button": "Exportar"
   }
 }
